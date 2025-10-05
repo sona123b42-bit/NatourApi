@@ -1,0 +1,1 @@
+The Natours API is a comprehensive backend service for managing tours, users, and reviews. It provides all the functionality needed to support a travel booking platform, including authentication, tour management, user accounts, reviews, and geospatial queries.
