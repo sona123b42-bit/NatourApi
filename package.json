@@ -4,8 +4,9 @@
   "description": "natours project",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon sever.js",
-    "debug": "ndb sever.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "debug": "ndb server.js"
   },
   "author": "Va Sona",
   "license": "ISC",
