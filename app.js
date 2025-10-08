@@ -13,12 +13,16 @@ const reviewRouter = require('./routes/reviewRouter');
 const globalErrorHandler = require('./controllers/errorController');
 const AppError = require('./utils/appError');
 const cookieParser = require('cookie-parser');
+const cors = require('cors');
 
 const app = express();
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
 // read static file
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+// Security HTTP headers
+app.use(helmet());
 // 1) global middleware
 // body parser, reading data from body into req.body
 app.use(express.json({ limit: '10kb' }));
@@ -42,8 +46,7 @@ app.use(
     ],
   })
 );
-// Security HTTP headers
-app.use(helmet());
+
 console.log(process.env.NODE_ENV);
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
