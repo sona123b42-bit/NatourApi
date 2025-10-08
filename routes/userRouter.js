@@ -16,16 +16,16 @@ router.patch('/updateMe', userController.updateMe);
 router.delete('/deleteMe', userController.deleteMe);
 router.get('/me', userController.getMe, userController.getUserById);
 router.patch('/updateMyPassword', authController.updatePassword);
-// only restrict to admin
-router.use(authController.restrictTo('admin'));
+// Restrict only specific admin routes
 router
   .route('/')
-  .get(userController.getAllUser)
-  .post(userController.createUser);
+  .get(authController.restrictTo('admin'), userController.getAllUser)
+  .post(authController.restrictTo('admin'), userController.createUser);
+
 router
   .route('/:id')
-  .get(userController.getUserById)
-  .patch(userController.updateUser)
-  .delete(userController.deleteUser);
+  .get(authController.restrictTo('admin'), userController.getUserById)
+  .patch(authController.restrictTo('admin'), userController.updateUser)
+  .delete(authController.restrictTo('admin'), userController.deleteUser);
 
 module.exports = router;
