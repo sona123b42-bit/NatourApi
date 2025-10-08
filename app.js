@@ -16,24 +16,50 @@ const cookieParser = require('cookie-parser');
 const cors = require('cors');
 
 const app = express();
-app.set('view engine', 'pug');
-app.set('views', path.join(__dirname, 'views'));
-// read static file
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
-// Security HTTP headers
-app.use(helmet());
-// 1) global middleware
-// body parser, reading data from body into req.body
+
+// ✅ 1) Setup CORS FIRST (for local + Render)
+const allowedOrigins = [
+  'http://localhost:3000', // local dev
+  'https://natourapi.onrender.com', // your backend
+  'https://your-frontend.vercel.app', // your frontend (later)
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true, // ✅ allow cookies
+  })
+);
+
+// ✅ 2) Security headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false, // ✅ disable opener policy too
+    contentSecurityPolicy: false, // ✅ allow embeds (cookies, fonts, etc.)
+  })
+);
+
+// ✅ 3) Request logging
+if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
+
+// ✅ 4) Body + Cookie parsers
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
-// Date sanitization against NoSQL query injection
 
+// ✅ 5) Sanitization
 app.use(mongoSanitize());
-// Data sanitizaition against XSS
 app.use(xss());
-//Prevent parameter polution
+
+// ✅ 6) Prevent parameter pollution
 app.use(
   hpp({
     whitelist: [
@@ -47,33 +73,36 @@ app.use(
   })
 );
 
-console.log(process.env.NODE_ENV);
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
-// Limit request from same api
+// ✅ 7) Static files (public)
+app.set('view engine', 'pug');
+app.set('views', path.join(__dirname, 'views'));
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ✅ 8) Rate limiter
 const limiter = rateLimit({
   max: 100,
   windowMs: 3600000,
-  message: 'Too meny requests from this IP, please try again in an hour',
+  message: 'Too many requests from this IP, please try again in an hour',
 });
 app.use('/api', limiter);
+
+// ✅ 9) Custom middleware for logging time
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
-
   next();
 });
-// 3) Route
 
+// ✅ 10) ROUTES
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/review', reviewRouter);
-app.all('*', (req, res, next) => {
-  // const err = new Error(`Can't find ${req.originalUrl} on this sever!`);
-  // err.status = 'fail';
-  // err.statusCode = 404;
 
-  next(new AppError(`Can't find ${req.originalUrl} on this sever!`, 404));
+// ✅ 11) Handle unmatched routes
+app.all('*', (req, res, next) => {
+  next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });
+
+// ✅ 12) Global error handler
 app.use(globalErrorHandler);
+
 module.exports = app;
