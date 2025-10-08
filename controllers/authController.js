@@ -250,3 +250,31 @@ exports.isLoggedIn = async (req, res, next) => {
     });
   }
 };
+// ✅ Hybrid logout: works for both token-based & cookie-based auth
+exports.logout = (req, res) => {
+  try {
+    // 1️⃣ Clear cookie if present
+    res.cookie('jwt', 'loggedout', {
+      expires: new Date(Date.now() + 10 * 1000), // expires in 10s
+      httpOnly: true,
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
+
+    // 2️⃣ Optional: clear token header if it was sent (for good measure)
+    if (req.headers.authorization) {
+      req.headers.authorization = undefined;
+    }
+
+    // 3️⃣ Send response that frontend can handle
+    res.status(200).json({
+      status: 'success',
+      message: 'Logged out successfully (token & cookie cleared)',
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      message: 'Logout failed on the server',
+    });
+  }
+};
