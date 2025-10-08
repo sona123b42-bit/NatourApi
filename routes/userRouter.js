@@ -8,6 +8,7 @@ router.post('/signup', authController.signup);
 router.post('/login', authController.login);
 router.post('/forgotPassword', authController.forgotPassword);
 router.patch('/resetPassword/:token', authController.resetpassword);
+router.get('/isLoggedIn', authController.isLoggedIn);
 // need to login to do all this
 // use this so that after this middleware every route have this protect middleware
 router.use(authController.protect);
