@@ -169,20 +169,31 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
   // 1) Get user from collection
   const user = await User.findById(req.user.id).select('+password');
   // 2) Check is posted current password is correct
+  const isCorrect = await user.correctPassword(
+    req.body.passwordCurrent,
+    user.password
+  );
+  if (!isCorrect) return next(new AppError('Incorrect current password', 401));
 
-  if (
-    !user ||
-    !(await user.correctPassword(req.body.passwordCurrent, user.password))
-  ) {
-    return next(new AppError('Incorrect password', 401));
-  }
+  // 3) Prevent reusing same password
+  const isSamePassword = await user.correctPassword(
+    req.body.password,
+    user.password
+  );
+  if (isSamePassword)
+    return next(
+      new AppError(
+        'New password cannot be the same as the current password',
+        400
+      )
+    );
 
-  // 3) if so, update password
+  // 4) Update password
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
-  await user.save();
-  console.log(req.body.passwordCurrent, user.password);
-  // 4) log user in, send JWT
+  await user.save(); // triggers pre-save hash middleware
+
+  // 5) Log user in, send JWT
   createSendToken(user, 200, res);
 });
 // Only for rendered pages, no errors!

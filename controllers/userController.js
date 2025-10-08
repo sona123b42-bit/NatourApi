@@ -30,6 +30,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
       )
     );
   }
+
   // 2) Update the user documents
   const filterBody = filterObj(req.body, 'name', 'email');
   const updateUser = await User.findByIdAndUpdate(req.user.id, filterBody, {
@@ -44,6 +45,7 @@ exports.updateMe = catchAsync(async (req, res, next) => {
     },
   });
 });
+
 exports.createUser = (req, res) => {
   res.status(500).json({
     status: 'error',
