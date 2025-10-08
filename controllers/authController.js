@@ -187,31 +187,66 @@ exports.updatePassword = catchAsync(async (req, res, next) => {
 });
 // Only for rendered pages, no errors!
 exports.isLoggedIn = async (req, res, next) => {
-  if (req.cookies.jwt) {
-    try {
-      // 1) verify token
-      const decoded = await promisify(jwt.verify)(
-        req.cookies.jwt,
-        process.env.JWT_SECRET
-      );
-
-      // 2) Check if user still exists
-      const currentUser = await User.findById(decoded.id);
-      if (!currentUser) {
-        return next();
-      }
-
-      // 3) Check if user changed password after the token was issued
-      if (currentUser.changedPasswordAfter(decoded.iat)) {
-        return next();
-      }
-
-      // THERE IS A LOGGED IN USER
-      res.locals.user = currentUser;
-      return next();
-    } catch (err) {
-      return next();
+  try {
+    let token;
+    // 1️⃣ Try reading JWT from cookie (for production)
+    if (req.cookies && req.cookies.jwt) {
+      token = req.cookies.jwt;
     }
+    // 2️⃣ Or from Authorization header (for localStorage JWT)
+    else if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    // 3️⃣ If still no token, user is not logged in
+    if (!token) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'You are not logged in! Please log in to get access',
+      });
+    }
+
+    // 4️⃣ Verify token
+    const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+
+    // 5️⃣ Check if user still exists
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'The user belonging to this token no longer exists',
+      });
+    }
+
+    // 6️⃣ Check if user changed password after token issued
+    if (currentUser.changedPasswordAfter(decoded.iat)) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'User recently changed password! Please log in again',
+      });
+    }
+
+    // ✅ SUCCESS — user is logged in
+    return res.status(200).json({
+      status: 'success',
+      data: {
+        user: {
+          id: currentUser._id,
+          name: currentUser.name,
+          email: currentUser.email,
+          role: currentUser.role,
+        },
+      },
+    });
+  } catch (err) {
+    console.error('isLoggedIn error:', err.message);
+    return res.status(401).json({
+      status: 'fail',
+      message: 'Invalid or expired token',
+      error: err.message,
+    });
   }
-  next();
 };
