@@ -6,7 +6,7 @@ const multer = require('multer');
 // 1️⃣ Storage: keep image filename + path
 const multerStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'public/img/users'); // 👈 folder where images go
+    cb(null, path.join(__dirname, 'public/img/users')); // 👈 folder where images go
   },
   filename: (req, file, cb) => {
     const ext = file.mimetype.split('/')[1];
