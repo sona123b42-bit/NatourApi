@@ -249,6 +249,7 @@ exports.isLoggedIn = async (req, res, next) => {
           name: currentUser.name,
           email: currentUser.email,
           role: currentUser.role,
+          photo: currentUser.photo,
         },
       },
     });
