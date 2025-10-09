@@ -13,7 +13,11 @@ router.get('/isLoggedIn', authController.isLoggedIn);
 // use this so that after this middleware every route have this protect middleware
 router.use(authController.protect);
 router.get('/logout', authController.logout);
-router.patch('/updateMe', userController.updateMe);
+router.patch(
+  '/updateMe',
+  userController.uploadUserPhoto,
+  userController.updateMe
+);
 router.delete('/deleteMe', userController.deleteMe);
 router.get('/me', userController.getMe, userController.getUserById);
 router.patch('/updateMyPassword', authController.updatePassword);
