@@ -36,7 +36,7 @@ app.use(
     credentials: true, // ✅ allow cookies
   })
 );
-
+app.options('*', cors());
 // ✅ 2) Security headers
 app.use(
   helmet({
@@ -80,7 +80,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ✅ 8) Rate limiter
 const limiter = rateLimit({
-  max: 100,
+  max: 1000,
   windowMs: 3600000,
   message: 'Too many requests from this IP, please try again in an hour',
 });

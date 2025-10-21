@@ -20,10 +20,21 @@ const createSendToken = (user, statusCode, res) => {
       Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
     ),
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production', // only HTTPS in production
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // allow cross-origin cookies
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
   };
-  if (process.env.NODE_ENV === 'production') cookieOptions.secure = true;
+
+  // // ✅ Development (localhost:3000 ↔ localhost:8000)
+  // if (process.env.NODE_ENV === 'development') {
+  //   cookieOptions.secure = false; // allow HTTP
+  //   cookieOptions.sameSite = 'lax'; // ok for localhost → localhost
+  // }
+
+  // // ✅ Production (e.g., frontend + API on different domains)
+  // if (process.env.NODE_ENV === 'production') {
+  //   cookieOptions.secure = true; // only send cookie over HTTPS
+  //   cookieOptions.sameSite = 'none'; // allow cross-site cookies
+  // }
 
   res.cookie('jwt', token, cookieOptions);
   // Create a plain object so we don't mutate the Mongoose doc
@@ -64,35 +75,46 @@ exports.login = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 exports.protect = catchAsync(async (req, res, next) => {
-  // 1) Getting the token and check if it's there
   let token;
+
+  // 1️⃣ Check header first
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith('Bearer')
   ) {
     token = req.headers.authorization.split(' ')[1];
   }
+  // 2️⃣ Then check cookies (for browser-based login)
+  else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
+  }
+
+  // 3️⃣ If still no token → not logged in
   if (!token) {
     return next(
-      new AppError('You not logged in! Please log in to get access', 401)
+      new AppError('You are not logged in! Please log in to get access.', 401)
     );
   }
-  // 2) validate the token
+
+  // 4️⃣ Verify token
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
 
-  // 3) check if user still exists
+  // 5️⃣ Check if user still exists
   const freshUser = await User.findById(decoded.id);
   if (!freshUser) {
     return next(
-      new AppError('The user is belonging to this user is no loger exist', 401)
+      new AppError('The user belonging to this token no longer exists.', 401)
     );
   }
-  // 4) check if user change password after token was issued
+
+  // 6️⃣ Check if password changed after token was issued
   if (freshUser.changedPasswordAfter(decoded.iat)) {
     return next(
-      new AppError('User recently changed password! Please log in again', 401)
+      new AppError('User recently changed password! Please log in again.', 401)
     );
   }
+
+  // 7️⃣ Attach user to request
   req.user = freshUser;
   next();
 });
