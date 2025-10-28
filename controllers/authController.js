@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const AppError = require('./../utils/appError');
 const sendEmail = require('./../utils/email');
 const crypto = require('crypto');
+
 const signToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN,
@@ -17,12 +18,18 @@ const createSendToken = (user, statusCode, res) => {
 
   const cookieOptions = {
     expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000
+      Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 86400000
     ),
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    secure: process.env.NODE_ENV === 'production',
   };
+
+  if (process.env.NODE_ENV === 'production') {
+    cookieOptions.secure = true; // HTTPS only
+    cookieOptions.sameSite = 'none'; // allow cross-site
+  } else {
+    cookieOptions.secure = false;
+    cookieOptions.sameSite = 'lax';
+  }
 
   // // ✅ Development (localhost:3000 ↔ localhost:8000)
   // if (process.env.NODE_ENV === 'development') {
@@ -139,9 +146,8 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
   // 3) Send it to user's email
-  const resetURL = `${req.protocol}://${req.get(
-    'host'
-  )}/api/v1/users/resetPassword/${resetToken}`;
+  const resetURL = `${process.env.FRONTEND_URL}/resetPassword/${resetToken}`;
+
   const message = `Forgot your password? submit a patch requst with your new password and passwordConfirm to: ${resetURL}`;
   try {
     await sendEmail({
