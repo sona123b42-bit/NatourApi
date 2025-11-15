@@ -74,7 +74,7 @@ app.use(
     ],
   })
 );
-app.use(compression);
+app.use(compression());
 // ✅ 7) Static files (public)
 app.set('view engine', 'pug');
 app.set('views', path.join(__dirname, 'views'));
